@@ -2,8 +2,11 @@ package libgen
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 const (
@@ -56,16 +59,23 @@ func buildQueryParams(params map[string]string) string {
 }
 
 func (u *Utils) Search(query Search, limit int) ([]string, error) {
-	url := fmt.Sprintf("%s?%s", LibgenURL)
-}
-
-func SearchBook(query string) (*Book, error) {
-	// search for book from libgen
-	book := &Book{
-		Title:  "Sample Book",
-		Author: "John Doe",
-		Year:   2002,
-		URL:    "http://libgen.is/book/123456",
+	url := fmt.Sprintf("%s?%s", LibgenURL, buildQueryParams(query.searchParams()))
+	res, err := u.Client.Get(url)
+	if err != nil {
+		return nil, err
 	}
-	return book, nil
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(body)))
+	if err != nil {
+		return nil, err
+	}
+
+	var ids []string
+	doc.Find()
 }
