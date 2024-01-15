@@ -1,6 +1,7 @@
 package libgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -44,7 +45,7 @@ func (s *Search) searchParams() map[string]string {
 	return params
 }
 
-func NewUtils() *Utils {
+func InitRequest() *Utils {
 	return &Utils{
 		Client: &http.Client{},
 	}
@@ -77,5 +78,38 @@ func (u *Utils) Search(query Search, limit int) ([]string, error) {
 	}
 
 	var ids []string
-	doc.Find()
+	counter := 0
+	doc.Find("[valign='top']").Each(func(_ int, s *goquery.Selection) {
+		if counter >= 1 {
+			id := s.Children().First().Text()
+			ids = append(ids, id)
+		}
+		counter++
+		if len(ids) >= limit {
+			return
+		}
+	})
+
+	return ids, nil
+}
+
+func (u *Utils) GetBooks(ids []string) ([]Book, error) {
+	url := fmt.Sprintf("%s?%s", LibgenAPIURL, buildQueryParams(map[string]string{
+		"fields": "id,title,author,year,extension,md5",
+		"ids":    strings.Join(ids, ","),
+	}))
+
+	res, err := u.Client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	var books []Book
+	err = json.NewDecoder(res.Body).Decode(&books)
+	if err != nil {
+		return nil, err
+	}
+
+	return books, nil
 }
