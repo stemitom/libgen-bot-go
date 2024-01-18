@@ -22,6 +22,7 @@ type Book struct {
 	Year      string `json:"year"`
 	Extension string `json:"extension"`
 	MD5       string `json:"md5"`
+	URL       string `json:"url"`
 }
 
 type Search struct {
