@@ -46,7 +46,7 @@ func (s *Search) searchParams() map[string]string {
 	return params
 }
 
-func InitRequest() *Utils {
+func NewUtils() *Utils {
 	return &Utils{
 		Client: &http.Client{},
 	}
