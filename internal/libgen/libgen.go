@@ -1,11 +1,14 @@
 package libgen
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -16,40 +19,28 @@ const (
 )
 
 type Book struct {
-	ID        string `json:"id"`
-	Title     string `json:"title"`
-	Author    string `json:"author"`
-	Year      string `json:"year"`
-	Extension string `json:"extension"`
-	MD5       string `json:"md5"`
-	URL       string `json:"url"`
+	ID          string
+	Title       string
+	Author      string
+	Year        string
+	Extension   string
+	Filesize    string
+	Pages       string
+	MD5         string
+	Publisher   string
+	Language    string
+	PageURL     string
+	CoverURL    string
+	DownloadURL string
 }
 
-type Search struct {
-	Title  string
-	Author string
+type LibGenClient struct {
+	BaseURL string
+	APIURL  string
 }
 
-type Utils struct {
-	Client *http.Client
-}
-
-func (s *Search) searchParams() map[string]string {
-	params := make(map[string]string)
-	if s.Title != "" {
-		params["title"] = s.Title
-	}
-	if s.Author != "" {
-		params["author"] = s.Author
-	}
-
-	return params
-}
-
-func NewUtils() *Utils {
-	return &Utils{
-		Client: &http.Client{},
-	}
+func NewLibGenClient() *LibGenClient {
+	return &LibGenClient{BaseURL: LibgenURL, APIURL: LibgenAPIURL}
 }
 
 func buildQueryParams(params map[string]string) string {
@@ -60,9 +51,17 @@ func buildQueryParams(params map[string]string) string {
 	return strings.Join(queryParams, "&")
 }
 
-func (u *Utils) Search(query Search, limit int) ([]string, error) {
-	url := fmt.Sprintf("%s?%s", LibgenURL, buildQueryParams(query.searchParams()))
-	res, err := u.Client.Get(url)
+func (l *LibGenClient) Search(queryText string, limit int) ([]string, error) {
+	url := fmt.Sprintf("%s?req=%s", LibgenURL, queryText)
+	log.Println(url)
+	client := http.Client{
+		Timeout: time.Second * 60,
+		Transport: &http.Transport{
+			Proxy:           http.ProxyFromEnvironment,
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+	res, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -81,26 +80,37 @@ func (u *Utils) Search(query Search, limit int) ([]string, error) {
 	var ids []string
 	counter := 0
 	doc.Find("[valign='top']").Each(func(_ int, s *goquery.Selection) {
-		if counter >= 1 {
+		if counter > 0 && len(ids) < limit {
 			id := s.Children().First().Text()
 			ids = append(ids, id)
 		}
 		counter++
-		if len(ids) >= limit {
-			return
-		}
 	})
 
+	books, err := l.GetBooks(ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, book := range books {
+		log.Printf("Book: %+v\n", book)
+	}
 	return ids, nil
 }
 
-func (u *Utils) GetBooks(ids []string) ([]Book, error) {
-	url := fmt.Sprintf("%s?%s", LibgenAPIURL, buildQueryParams(map[string]string{
-		"fields": "id,title,author,year,extension,md5",
+func (l *LibGenClient) GetBooks(ids []string) ([]Book, error) {
+	url := fmt.Sprintf("%s?%s", l.APIURL, buildQueryParams(map[string]string{
+		"fields": JSONQuery,
 		"ids":    strings.Join(ids, ","),
 	}))
 
-	res, err := u.Client.Get(url)
+	client := http.Client{
+		Timeout: time.Second * 60,
+		Transport: &http.Transport{
+			Proxy:           http.ProxyFromEnvironment,
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+	res, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}

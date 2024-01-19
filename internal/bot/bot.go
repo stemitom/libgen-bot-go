@@ -1,5 +1,3 @@
-// internal/bot/bot.go
-
 package bot
 
 import (
@@ -7,7 +5,7 @@ import (
 	"log"
 
 	"libgen-bot/internal/libgen"
-	"libgen-bot/pkg/telegram"
+	"libgen-bot/internal/platforms/telegram"
 )
 
 type Bot struct {
