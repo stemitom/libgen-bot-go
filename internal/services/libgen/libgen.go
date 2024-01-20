@@ -123,3 +123,9 @@ func (l *LibGenClient) GetBooks(ids []string) ([]Book, error) {
 
 	return books, nil
 }
+
+func (l *LibGenClient) GetDownloadURL(book Book) {
+}
+
+// func (l *LibGenClient) GetValidDownloadURLs(mirrors []url.URL) url.URL {
+// }

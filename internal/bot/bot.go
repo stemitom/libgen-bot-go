@@ -2,28 +2,29 @@ package bot
 
 import (
 	"fmt"
-	"log"
-
-	"libgen-bot/internal/libgen"
 	"libgen-bot/internal/platforms/telegram"
+	"libgen-bot/internal/services/libgen"
+	"log"
+	"os"
 )
 
 type Bot struct {
 	Telegram *telegram.TelegramBot
-	Utils    *libgen.Utils
+	Client   *libgen.LibGenClient
 }
 
 func NewBot() (*Bot, error) {
-	telegramBot, err := telegram.NewTelegramBot()
+	token := os.Getenv("TELE_TOKEN")
+	telegramBot, err := telegram.NewTelegramBot(token)
 	if err != nil {
 		return nil, err
 	}
 
-	libgenUtils := libgen.NewUtils()
+	libgenClient := libgen.NewLibGenClient()
 
 	return &Bot{
 		Telegram: telegramBot,
-		Utils:    libgenUtils,
+		Client:   libgenClient,
 	}, nil
 }
 
@@ -35,14 +36,14 @@ func (b *Bot) handleIncomingMessage(msg *telegram.Message) {
 	b.Telegram.SendMessage(msg.Chat.ID, response)
 
 	// Simulate a Libgen search
-	ids, err := b.Utils.Search(libgen.Search{Title: msg.Text}, 5)
+	ids, err := b.Client.Search()
 	if err != nil {
 		log.Println("Error searching for books:", err)
 		return
 	}
 
 	// Get book information
-	books, err := b.Utils.GetBooks(ids)
+	books, err := b.Client.GetBooks(ids)
 	if err != nil {
 		log.Println("Error getting book information:", err)
 		return

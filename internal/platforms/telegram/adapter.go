@@ -18,6 +18,9 @@ type Message struct {
 	*tgbotapi.Message
 }
 
+// Handler is a function signature for handling incoming messages.
+type Handler func(msg *Message, tb *TelegramBot)
+
 func NewTelegramBot(token string) (*TelegramBot, error) {
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -51,21 +54,9 @@ func (tb *TelegramBot) SendMessage(chatID int64, message string) {
 	}
 }
 
-// HandleCommand handles commands received from users.
-func (tb *TelegramBot) HandleCommand(message *Message, command string) {
-	switch command {
-	case "/start":
-		tb.handleStartCommand(message)
-	case "/search":
-		tb.handleSearchCommand(message)
-	default:
-		tb.SendMessage(message.Chat.ID, "Unknown command. Type /help for a list of available commands.")
-	}
-}
-
 // handleStartCommand handles the "/start" command.
 func (tb *TelegramBot) handleStartCommand(message *Message) {
-	response := "Welcome to the Libgen Bot! Use /help to see available commands."
+	response := "Welcome to the VivioMagus Bot! Use /help to see available commands."
 	tb.SendMessage(message.Chat.ID, response)
 }
 
@@ -100,13 +91,15 @@ func (tb *TelegramBot) handleSearchCommand(message *Message) {
 	}
 }
 
-// HandleIncomingMessage is a general handler for all incoming messages.
-func (tb *TelegramBot) HandleIncomingMessage(message *Message) {
-	switch {
-	case message.IsCommand():
-		tb.HandleCommand(message, message.Command())
+// HandleCommand handles commands received from users.
+func (tb *TelegramBot) HandleCommand(message *Message, command string) {
+	switch command {
+	case "/start":
+		tb.handleStartCommand(message)
+	case "/search":
+		tb.handleSearchCommand(message)
 	default:
-		tb.SendMessage(message.Chat.ID, "I don't know how to handle this type of message.")
+		tb.SendMessage(message.Chat.ID, "Unknown command. Type /help for a list of available commands.")
 	}
 }
 
@@ -116,5 +109,12 @@ func (tb *TelegramBot) handleTextMessage(message *Message) {
 	tb.SendMessage(message.Chat.ID, response)
 }
 
-// Handler is a function signature for handling incoming messages.
-type Handler func(msg *Message, tb *TelegramBot)
+// HandleIncomingMessage is a general handler for all incoming messages.
+func (tb *TelegramBot) HandleIncomingMessage(message *Message) {
+	switch {
+	case message.IsCommand():
+		tb.HandleCommand(message, message.Command())
+	default:
+		tb.SendMessage(message.Chat.ID, "I don't know how to handle this type of message.")
+	}
+}
