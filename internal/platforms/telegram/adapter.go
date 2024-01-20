@@ -107,9 +107,6 @@ func (tb *TelegramBot) HandleIncomingMessage(message *Message) {
 	case message.IsCommand():
 		// Handle commands
 		tb.HandleCommand(message, message.Command())
-	case message.IsText():
-		// Handle text messages
-		tb.handleTextMessage(message)
 	default:
 		// Handle other types of messages
 		tb.SendMessage(message.Chat.ID, "I don't know how to handle this type of message.")
