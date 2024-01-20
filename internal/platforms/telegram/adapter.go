@@ -86,17 +86,18 @@ func (tb *TelegramBot) handleSearchCommand(message *Message) {
 	}
 
 	// Get book information
-	book, err := l.GetBooks(ids)
+	books, err := l.GetBooks(ids)
 	if err != nil {
 		log.Println("Error getting book information:", err)
 		tb.SendMessage(message.Chat.ID, "An error occurred while getting book information.")
 		return
 	}
 
-	// Send the book information
-	response := fmt.Sprintf("Book Information:\nTitle: %s\nAuthor: %s\nYear: %s\n",
-		book.Title, book.Author, book.Year)
-	tb.SendMessage(message.Chat.ID, response)
+	for _, book := range books {
+		response := fmt.Sprintf("Book Information:\nTitle: %s\nAuthor: %s\nYear: %s\n",
+			book.Title, book.Author, book.Year)
+		tb.SendMessage(message.Chat.ID, response)
+	}
 }
 
 // HandleIncomingMessage is a general handler for all incoming messages.
