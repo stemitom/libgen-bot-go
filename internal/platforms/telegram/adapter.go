@@ -102,13 +102,10 @@ func (tb *TelegramBot) handleSearchCommand(message *Message) {
 
 // HandleIncomingMessage is a general handler for all incoming messages.
 func (tb *TelegramBot) HandleIncomingMessage(message *Message) {
-	// Handle different types of messages
 	switch {
 	case message.IsCommand():
-		// Handle commands
 		tb.HandleCommand(message, message.Command())
 	default:
-		// Handle other types of messages
 		tb.SendMessage(message.Chat.ID, "I don't know how to handle this type of message.")
 	}
 }

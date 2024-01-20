@@ -6,7 +6,7 @@ import (
 
 func main() {
 	l := libgen.NewLibGenClient()
-	l.Search("peace", 2)
+	l.Search("peace", 10)
 	// b, err := bot.NewBot()
 	// if err != nil {
 	// 	log.Panic(err)
