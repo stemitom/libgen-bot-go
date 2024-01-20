@@ -53,7 +53,6 @@ func buildQueryParams(params map[string]string) string {
 
 func (l *LibGenClient) Search(queryText string, limit int) ([]string, error) {
 	url := fmt.Sprintf("%s?req=%s", LibgenURL, queryText)
-	log.Println(url)
 	client := http.Client{
 		Timeout: time.Second * 60,
 		Transport: &http.Transport{
@@ -87,6 +86,13 @@ func (l *LibGenClient) Search(queryText string, limit int) ([]string, error) {
 		counter++
 	})
 
+	books, err := l.GetBooks(ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, book := range books {
+		log.Printf("Book: %+v\n", book)
+	}
 	return ids, nil
 }
 
