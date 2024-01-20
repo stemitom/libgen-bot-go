@@ -94,9 +94,9 @@ func (tb *TelegramBot) handleSearchCommand(message *Message) {
 // HandleCommand handles commands received from users.
 func (tb *TelegramBot) HandleCommand(message *Message, command string) {
 	switch command {
-	case "/start":
+	case "start":
 		tb.handleStartCommand(message)
-	case "/search":
+	case "search":
 		tb.handleSearchCommand(message)
 	default:
 		tb.SendMessage(message.Chat.ID, "Unknown command. Type /help for a list of available commands.")
