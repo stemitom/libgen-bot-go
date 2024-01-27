@@ -84,7 +84,6 @@ func (l *LibGenClient) Search(queryText string, limit int) ([]string, error) {
 		}
 		counter++
 	})
-
 	return ids, nil
 }
 
