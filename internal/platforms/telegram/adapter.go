@@ -2,10 +2,11 @@ package telegram
 
 import (
 	"fmt"
-	"log"
-	"strings"
-
 	"libgen-bot/internal/services/libgen"
+	"log"
+	"net/url"
+	"strconv"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
@@ -85,11 +86,20 @@ func (tb *TelegramBot) handleSearchCommand(message *Message) {
 		return
 	}
 
-	for _, book := range books {
-		response := fmt.Sprintf("Book Information:\nTitle: %s\nAuthor: %s\nYear: %s\n",
-			book.Title, book.Author, book.Year)
-		tb.SendMessage(message.Chat.ID, response)
+	if len(books) == 0 {
+		tb.SendMessage(message.Chat.ID, "No books found for your query.")
+		return
 	}
+
+	// Use makeMessage to create a message with book titles
+	msgText := makeMessage(books)
+	tb.SendMessage(message.Chat.ID, msgText)
+
+	// Use makeKeyboard to create a keyboard with book options
+	keyboard := makeKeyboard(books)
+	msg := tgbotapi.NewMessage(message.Chat.ID, "Select a book:")
+	msg.ReplyMarkup = keyboard
+	tb.Bot.Send(msg)
 }
 
 // HandleCommand handles commands received from users.
@@ -120,6 +130,37 @@ func (tb *TelegramBot) HandleIncomingMessage(message *Message) {
 	}
 }
 
-// MakeURLKeyboard creates an inline keyboard for URLs
-func (tb *TelegramBot) MakeURLKeyboard(messsage *Message) {
+// makeMessage creates a message string from a slice of Books.
+func makeMessage(books []libgen.Book) string {
+	msg := ""
+	for i, b := range books {
+		msg += fmt.Sprintf("%d. %s\n", i+1, b.Title)
+	}
+	return msg
+}
+
+// makeURLKeyboard creates a keyboard with a URL button.
+func makeURLKeyboard(urlStr string) tgbotapi.InlineKeyboardMarkup {
+	url, _ := url.Parse(urlStr)
+	button := tgbotapi.NewInlineKeyboardButtonURL("Download", url.String())
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(button),
+	)
+	return keyboard
+}
+
+// makeKeyboard creates a keyboard from a slice of Books.
+func makeKeyboard(books []libgen.Book) tgbotapi.InlineKeyboardMarkup {
+	var keyboard [][]tgbotapi.InlineKeyboardButton
+	for i, book := range books {
+		if i%5 == 0 {
+			keyboard = append(keyboard, []tgbotapi.InlineKeyboardButton{})
+		}
+		button := tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(i+1), book.ID)
+		rowIndex := i / 5
+		keyboard[rowIndex] = append(keyboard[rowIndex], button)
+	}
+
+	return tgbotapi.NewInlineKeyboardMarkup(keyboard...)
 }
