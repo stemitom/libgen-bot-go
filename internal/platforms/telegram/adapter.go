@@ -11,9 +11,14 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
+const (
+	maxButtonsPerRow = 5 // Maximum number of buttons per row in a keyboard
+)
+
 type TelegramBot struct {
 	Bot     *tgbotapi.BotAPI
 	Updates tgbotapi.UpdatesChannel
+	LibGen  *libgen.LibGenClient
 }
 
 type Message struct {
@@ -29,14 +34,21 @@ func NewTelegramBot(token string) (*TelegramBot, error) {
 		return nil, err
 	}
 
-	return &TelegramBot{Bot: bot}, nil
+	l := libgen.NewLibGenClient()
+	return &TelegramBot{Bot: bot, LibGen: l}, nil
 }
 
 // OnMessage sets up a handler for incoming messages
 func (tb *TelegramBot) OnMessage(handler Handler) {
 	updates := tgbotapi.NewUpdate(0)
 	updates.Timeout = 60
-	tb.Updates, _ = tb.Bot.GetUpdatesChan(updates)
+	var err error
+	tb.Updates, err = tb.Bot.GetUpdatesChan(updates)
+	if err != nil {
+		log.Println("Error getting updates:", err)
+		return
+	}
+
 	for update := range tb.Updates {
 		if update.Message == nil {
 			continue
@@ -50,16 +62,21 @@ func (tb *TelegramBot) OnMessage(handler Handler) {
 // SendMessage sends a message to the specified chatID
 func (tb *TelegramBot) SendMessage(chatID int64, message string) {
 	msg := tgbotapi.NewMessage(chatID, message)
-	_, err := tb.Bot.Send(msg)
-	if err != nil {
-		log.Println("Error sending message:", err)
+	if _, err := tb.Bot.Send(msg); err != nil {
+		log.Printf("Error sending message to %d: %v", chatID, err)
 	}
 }
 
 // handleStartCommand handles the "/start" command.
 func (tb *TelegramBot) handleStartCommand(message *Message) {
-	response := "Welcome to the VivioMagus Bot! Use /help to see available commands."
-	tb.SendMessage(message.Chat.ID, response)
+	tb.SendMessage(message.Chat.ID, "Welcome to the VivioMagus Bot! Use /help to see available commands.")
+}
+
+func (tb *TelegramBot) handleHelpCommand(message *Message) {
+	tb.SendMessage(message.Chat.ID, "Available commands:\n"+
+		"/start - Start the bot\n"+
+		"/search - Search for books\n"+
+		"/help - Show this help message")
 }
 
 // handleSearchCommand handles the "/search" command.
@@ -70,16 +87,14 @@ func (tb *TelegramBot) handleSearchCommand(message *Message) {
 		return
 	}
 
-	l := libgen.NewLibGenClient()
-	ids, err := l.Search(query, 10)
+	ids, err := tb.LibGen.Search(query, 10)
 	if err != nil {
 		log.Println("Error searching for books:", err)
 		tb.SendMessage(message.Chat.ID, "An error occurred while searching for books.")
 		return
 	}
 
-	// Get book information
-	books, err := l.GetBooks(ids)
+	books, err := tb.LibGen.GetBooks(ids)
 	if err != nil {
 		log.Println("Error getting book information:", err)
 		tb.SendMessage(message.Chat.ID, "An error occurred while getting book information.")
@@ -91,11 +106,9 @@ func (tb *TelegramBot) handleSearchCommand(message *Message) {
 		return
 	}
 
-	// Use makeMessage to create a message with book titles
 	msgText := makeMessage(books)
 	tb.SendMessage(message.Chat.ID, msgText)
 
-	// Use makeKeyboard to create a keyboard with book options
 	keyboard := makeKeyboard(books)
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Select a book:")
 	msg.ReplyMarkup = keyboard
@@ -109,58 +122,65 @@ func (tb *TelegramBot) HandleCommand(message *Message, command string) {
 		tb.handleStartCommand(message)
 	case "search":
 		tb.handleSearchCommand(message)
+	case "help":
+		tb.handleHelpCommand(message)
 	default:
 		tb.SendMessage(message.Chat.ID, "Unknown command. Type /help for a list of available commands.")
 	}
 }
 
-// handleTextMessage handles general text messages.
-func (tb *TelegramBot) handleTextMessage(message *Message) {
-	response := "I received a text message. Use /help to see available commands."
-	tb.SendMessage(message.Chat.ID, response)
-}
-
 // HandleIncomingMessage is a general handler for all incoming messages.
 func (tb *TelegramBot) HandleIncomingMessage(message *Message) {
-	switch {
-	case message.IsCommand():
+	if message.IsCommand() {
 		tb.HandleCommand(message, message.Command())
-	default:
+	} else {
 		tb.SendMessage(message.Chat.ID, "I don't know how to handle this type of message.")
 	}
 }
 
 // makeMessage creates a message string from a slice of Books.
 func makeMessage(books []libgen.Book) string {
-	msg := ""
+	var msg strings.Builder
 	for i, b := range books {
-		msg += fmt.Sprintf("%d. %s\n", i+1, b.Title)
+		msg.WriteString(fmt.Sprintf("%d. %s\n", i+1, b.Title))
 	}
-	return msg
+	return msg.String()
 }
 
 // makeURLKeyboard creates a keyboard with a URL button.
 func makeURLKeyboard(urlStr string) tgbotapi.InlineKeyboardMarkup {
-	url, _ := url.Parse(urlStr)
+	url, err := url.Parse(urlStr)
+	if err != nil {
+		log.Printf("Error parsing URL: %v", err)
+		return tgbotapi.InlineKeyboardMarkup{}
+	}
 	button := tgbotapi.NewInlineKeyboardButtonURL("Download", url.String())
-
-	keyboard := tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(button),
-	)
+	keyboard := tgbotapi.NewInlineKeyboardMarkup([]tgbotapi.InlineKeyboardButton{button})
 	return keyboard
 }
 
-// makeKeyboard creates a keyboard from a slice of Books.
+// makeKeyboard creates a keyboard for selecting books.
 func makeKeyboard(books []libgen.Book) tgbotapi.InlineKeyboardMarkup {
-	var keyboard [][]tgbotapi.InlineKeyboardButton
+	var rows [][]tgbotapi.InlineKeyboardButton
+	var currentRow []tgbotapi.InlineKeyboardButton
+
 	for i, book := range books {
-		if i%5 == 0 {
-			keyboard = append(keyboard, []tgbotapi.InlineKeyboardButton{})
+		buttonText := strconv.Itoa(i+1) + ". " + book.Title
+		if len(buttonText) > 40 { // Truncate long titles
+			buttonText = buttonText[:37] + "..."
 		}
-		button := tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(i+1), book.ID)
-		rowIndex := i / 5
-		keyboard[rowIndex] = append(keyboard[rowIndex], button)
+		callbackData := "book:" + book.ID
+		button := tgbotapi.NewInlineKeyboardButtonData(buttonText, callbackData)
+
+		if (i+1)%maxButtonsPerRow == 0 {
+			rows = append(rows, currentRow)
+			currentRow = []tgbotapi.InlineKeyboardButton{}
+		}
+		currentRow = append(currentRow, button)
+	}
+	if len(currentRow) > 0 {
+		rows = append(rows, currentRow)
 	}
 
-	return tgbotapi.NewInlineKeyboardMarkup(keyboard...)
+	return tgbotapi.NewInlineKeyboardMarkup(rows...)
 }
