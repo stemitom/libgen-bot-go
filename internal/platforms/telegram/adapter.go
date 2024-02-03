@@ -2,9 +2,10 @@ package telegram
 
 import (
 	"fmt"
-	"libgen-bot/internal/services/libgen"
 	"log"
 	"strings"
+
+	"libgen-bot/internal/services/libgen"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
@@ -64,7 +65,7 @@ func (tb *TelegramBot) handleStartCommand(message *Message) {
 func (tb *TelegramBot) handleSearchCommand(message *Message) {
 	query := strings.TrimSpace(strings.TrimPrefix(message.Text, "/search"))
 	if query == "" {
-		tb.SendMessage(message.Chat.ID, "Please provide a search query. Example: /search Harry Potter")
+		tb.SendMessage(message.Chat.ID, "Please provide a search query. Example: /search The Hobbits")
 		return
 	}
 
@@ -117,4 +118,8 @@ func (tb *TelegramBot) HandleIncomingMessage(message *Message) {
 	default:
 		tb.SendMessage(message.Chat.ID, "I don't know how to handle this type of message.")
 	}
+}
+
+// MakeURLKeyboard creates an inline keyboard for URLs
+func (tb *TelegramBot) MakeURLKeyboard(messsage *Message) {
 }
