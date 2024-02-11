@@ -1,11 +1,8 @@
 package telegram
 
 import (
-	"fmt"
 	"libgen-bot/internal/services/libgen"
 	"log"
-	"net/url"
-	"strconv"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -50,6 +47,11 @@ func (tb *TelegramBot) OnMessage(handler Handler) {
 	}
 
 	for update := range tb.Updates {
+		// if update.CallbackQuery != nil {
+		// 	tb.handleCallbackQuery(update.CallbackQuery)
+		// } else if update.Message == nil {
+		// 	continue
+		// }
 		if update.Message == nil {
 			continue
 		}
@@ -138,49 +140,32 @@ func (tb *TelegramBot) HandleIncomingMessage(message *Message) {
 	}
 }
 
-// makeMessage creates a message string from a slice of Books.
-func makeMessage(books []libgen.Book) string {
-	var msg strings.Builder
-	for i, b := range books {
-		msg.WriteString(fmt.Sprintf("%d. %s\n", i+1, b.Title))
-	}
-	return msg.String()
-}
-
-// makeURLKeyboard creates a keyboard with a URL button.
-func makeURLKeyboard(urlStr string) tgbotapi.InlineKeyboardMarkup {
-	url, err := url.Parse(urlStr)
-	if err != nil {
-		log.Printf("Error parsing URL: %v", err)
-		return tgbotapi.InlineKeyboardMarkup{}
-	}
-	button := tgbotapi.NewInlineKeyboardButtonURL("Download", url.String())
-	keyboard := tgbotapi.NewInlineKeyboardMarkup([]tgbotapi.InlineKeyboardButton{button})
-	return keyboard
-}
-
-// makeKeyboard creates a keyboard for selecting books.
-func makeKeyboard(books []libgen.Book) tgbotapi.InlineKeyboardMarkup {
-	var rows [][]tgbotapi.InlineKeyboardButton
-	var currentRow []tgbotapi.InlineKeyboardButton
-
-	for i, book := range books {
-		buttonText := strconv.Itoa(i+1) + ". " + book.Title
-		if len(buttonText) > 40 { // Truncate long titles
-			buttonText = buttonText[:37] + "..."
-		}
-		callbackData := "book:" + book.ID
-		button := tgbotapi.NewInlineKeyboardButtonData(buttonText, callbackData)
-
-		if (i+1)%maxButtonsPerRow == 0 {
-			rows = append(rows, currentRow)
-			currentRow = []tgbotapi.InlineKeyboardButton{}
-		}
-		currentRow = append(currentRow, button)
-	}
-	if len(currentRow) > 0 {
-		rows = append(rows, currentRow)
-	}
-
-	return tgbotapi.NewInlineKeyboardMarkup(rows...)
-}
+// handleCallbackQuery handles callback queries from inline keyboards.
+// func (tb *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
+// 	data := strings.Split(callback.Data, ":")
+// 	if len(data) != 2 {
+// 		log.Println("Invalid callback data received:", callback.Data)
+// 		return
+// 	}
+//
+// 	index, err := strconv.Atoi(data[1])
+// 	if err != nil {
+// 		log.Printf("Error parsing callback data index '%s': %v", data[1], err)
+// 		return
+// 	}
+//
+// 	books, err := tb.GetCurrentBooks(callback.Message.Chat.ID) // You need to implement this
+// 	if err != nil || index < 0 || index >= len(books) {
+// 		tb.SendMessage(callback.Message.Chat.ID, "An error occurred or book index is out of range.")
+// 		return
+// 	}
+//
+// 	book := books[index]
+// 	downloadURL, err := tb.LibGen.GetDownloadURL(book)
+// 	if err != nil {
+// 		return
+// 	}
+//
+// 	msgText := fmt.Sprintf("Download '%s': %s", book.Title, downloadURL)
+// 	tb.SendMessage(callback.Message.Chat.ID, msgText)
+// }
