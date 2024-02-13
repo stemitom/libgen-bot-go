@@ -3,54 +3,43 @@ package telegram
 import (
 	"fmt"
 	"libgen-bot/internal/services/libgen"
-	"log"
 	"net/url"
 	"strconv"
-	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-// makeMessage creates a message string from a slice of Books including details.
+// makeMessage creates a message string from a slice of books
 func makeMessage(books []libgen.Book) string {
-	var msg strings.Builder
-	for _, b := range books {
-		msg.WriteString(fmt.Sprintf("Title: %s\nFilesize: %s\nExtension: %s\nDownloadUrl: %s\n", b.Title, b.Filesize, b.Extension, b.DownloadURL))
+	var msg string
+	for i, b := range books {
+		msg += fmt.Sprintf("%s\n", b.PrettyWithIndex(i+1))
 	}
-	return msg.String()
+	return msg
 }
 
-// makeURLKeyboard creates a keyboard with a URL button.
-func makeURLKeyboard(urlStr string) tgbotapi.InlineKeyboardMarkup {
-	url, err := url.Parse(urlStr)
+// makeURLKeyboard creates an inline keyboard with a single button linking to a given URL
+func makeURLKeyboard(urlString string) tgbotapi.InlineKeyboardMarkup {
+	url, err := url.Parse(urlString)
 	if err != nil {
-		log.Printf("Error parsing URL: %v", err)
-		return tgbotapi.InlineKeyboardMarkup{}
+		panic(err)
 	}
+
 	button := tgbotapi.NewInlineKeyboardButtonURL("Download", url.String())
-	keyboard := tgbotapi.NewInlineKeyboardMarkup([]tgbotapi.InlineKeyboardButton{button})
-	return keyboard
+	row := []tgbotapi.InlineKeyboardButton{button}
+	keyboard := [][]tgbotapi.InlineKeyboardButton{row}
+
+	return tgbotapi.NewInlineKeyboardMarkup(keyboard...)
 }
 
-// makeKeyboard creates a keyboard for selecting books to download.
+// makeKeyboard creates an inline keyboard with callback buttons for each book
 func makeKeyboard(books []libgen.Book) tgbotapi.InlineKeyboardMarkup {
-	var rows [][]tgbotapi.InlineKeyboardButton
-	var currentRow []tgbotapi.InlineKeyboardButton
-
-	for i := range books {
-		buttonText := "Download Book " + strconv.Itoa(i+1)
-		callbackData := "select:" + strconv.Itoa(i)
-		button := tgbotapi.NewInlineKeyboardButtonData(buttonText, callbackData)
-
-		if (i+1)%maxButtonsPerRow == 0 {
-			rows = append(rows, currentRow)
-			currentRow = []tgbotapi.InlineKeyboardButton{}
-		}
-		currentRow = append(currentRow, button)
-	}
-	if len(currentRow) > 0 {
-		rows = append(rows, currentRow)
+	var keyboard [][]tgbotapi.InlineKeyboardButton
+	for i, book := range books {
+		button := tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(i+1), book.ID)
+		row := []tgbotapi.InlineKeyboardButton{button}
+		keyboard = append(keyboard, row)
 	}
 
-	return tgbotapi.NewInlineKeyboardMarkup(rows...)
+	return tgbotapi.NewInlineKeyboardMarkup(keyboard...)
 }

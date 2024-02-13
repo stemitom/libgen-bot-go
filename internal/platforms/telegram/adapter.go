@@ -62,8 +62,14 @@ func (tb *TelegramBot) OnMessage(handler Handler) {
 }
 
 // SendMessage sends a message to the specified chatID
-func (tb *TelegramBot) SendMessage(chatID int64, message string) {
+func (tb *TelegramBot) SendMessage(chatID int64, message string, parseMode ...string) {
+	mode := "html"
+	if len(parseMode) > 0 {
+		mode = parseMode[0]
+	}
+
 	msg := tgbotapi.NewMessage(chatID, message)
+	msg.ParseMode = mode
 	if _, err := tb.Bot.Send(msg); err != nil {
 		log.Printf("Error sending message to %d: %v", chatID, err)
 	}
@@ -89,7 +95,7 @@ func (tb *TelegramBot) handleSearchCommand(message *Message) {
 		return
 	}
 
-	ids, err := tb.LibGen.Search(query, 10)
+	ids, err := tb.LibGen.Search(query, 5)
 	if err != nil {
 		log.Println("Error searching for books:", err)
 		tb.SendMessage(message.Chat.ID, "An error occurred while searching for books.")
@@ -108,11 +114,10 @@ func (tb *TelegramBot) handleSearchCommand(message *Message) {
 		return
 	}
 
-	msgText := makeMessage(books)
-	tb.SendMessage(message.Chat.ID, msgText)
-
+	text := makeMessage(books)
 	keyboard := makeKeyboard(books)
-	msg := tgbotapi.NewMessage(message.Chat.ID, "Select a book:")
+	msg := tgbotapi.NewMessage(message.Chat.ID, text)
+	msg.ParseMode = "html"
 	msg.ReplyMarkup = keyboard
 	tb.Bot.Send(msg)
 }

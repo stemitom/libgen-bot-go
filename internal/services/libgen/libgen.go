@@ -33,6 +33,26 @@ type Book struct {
 	DownloadURL string
 }
 
+// Pretty returns a formatted string representation of the book
+func (b *Book) Pretty() string {
+	return fmt.Sprintf("<b>%s</b>\n\n👤 %s\nFormat: %s\n", b.Title, b.Author, b.Extension)
+}
+
+// PrettyWithIndex returns a formatted string representation of the book with index
+func (b *Book) PrettyWithIndex(index int) string {
+	return fmt.Sprintf("%d. <b>%s</b>\n👤 %s\nYear: %s, Type: %s\n", index, b.Title, b.Author, b.Year, b.Extension)
+}
+
+// MD5URL returns the URL for downloading the book by MD5
+func (b *Book) MD5URL() string {
+	return fmt.Sprintf("http://libgen.is/get.php?md5=%s", b.MD5)
+}
+
+// String returns a string representation of the book
+func (b *Book) String() string {
+	return fmt.Sprintf("Book(%s, %s, %s)", b.Title, b.Author, b.MD5)
+}
+
 type LibGenClient struct {
 	BaseURL string
 	APIURL  string
