@@ -8,10 +8,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-const (
-	maxButtonsPerRow = 5 // Maximum number of buttons per row in a keyboard
-)
-
 type TelegramBot struct {
 	Bot     *tgbotapi.BotAPI
 	Updates tgbotapi.UpdatesChannel
@@ -144,33 +140,3 @@ func (tb *TelegramBot) HandleIncomingMessage(message *Message) {
 		tb.SendMessage(message.Chat.ID, "I don't know how to handle this type of message.")
 	}
 }
-
-// handleCallbackQuery handles callback queries from inline keyboards.
-// func (tb *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
-// 	data := strings.Split(callback.Data, ":")
-// 	if len(data) != 2 {
-// 		log.Println("Invalid callback data received:", callback.Data)
-// 		return
-// 	}
-//
-// 	index, err := strconv.Atoi(data[1])
-// 	if err != nil {
-// 		log.Printf("Error parsing callback data index '%s': %v", data[1], err)
-// 		return
-// 	}
-//
-// 	books, err := tb.GetCurrentBooks(callback.Message.Chat.ID) // You need to implement this
-// 	if err != nil || index < 0 || index >= len(books) {
-// 		tb.SendMessage(callback.Message.Chat.ID, "An error occurred or book index is out of range.")
-// 		return
-// 	}
-//
-// 	book := books[index]
-// 	downloadURL, err := tb.LibGen.GetDownloadURL(book)
-// 	if err != nil {
-// 		return
-// 	}
-//
-// 	msgText := fmt.Sprintf("Download '%s': %s", book.Title, downloadURL)
-// 	tb.SendMessage(callback.Message.Chat.ID, msgText)
-// }
