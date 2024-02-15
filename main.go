@@ -23,5 +23,4 @@ func main() {
 	bot.OnMessage(func(msg *telegram.Message, tb *telegram.TelegramBot) {
 		tb.HandleIncomingMessage(msg)
 	})
-	// select {}
 }

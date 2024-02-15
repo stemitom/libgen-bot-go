@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -45,7 +47,7 @@ func (b *Book) PrettyWithIndex(index int) string {
 
 // MD5URL returns the URL for downloading the book by MD5
 func (b *Book) MD5URL() string {
-	return fmt.Sprintf("http://libgen.is/get.php?md5=%s", b.MD5)
+	return fmt.Sprintf("https://library.lol/main/%s", b.MD5)
 }
 
 // String returns a string representation of the book
@@ -131,37 +133,45 @@ func (l *LibGenClient) GetBooks(ids []string) ([]Book, error) {
 	if err != nil {
 		return nil, err
 	}
+	/*
+		// Create a channel to receive the download URLs
+		urlsCh := make(chan string, len(books))
+		defer close(urlsCh)
 
-	downloadURLChan := make(chan string)
-	errorsChan := make(chan error)
+		// Create a wait group to wait for all goroutines to finish
+		var wg sync.WaitGroup
 
-	for _, book := range books {
-		go func(b Book) {
-			downloadURL, err := l.GetDownloadURL(b)
-			if err != nil {
-				errorsChan <- err
-				return
-			}
-			downloadURLChan <- downloadURL
-		}(book)
-	}
-
-	for i := range books {
-		select {
-		case downloadURL := <-downloadURLChan:
-			books[i].DownloadURL = downloadURL
-		case err := <-errorsChan:
-			return nil, err
+		// Fetch the download URLs concurrently for each book
+		for i := range books {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				log.Printf("Async downloading book %s", books[i].MD5URL())
+				downloadURL, err := l.GetDownloadURL(books[i])
+				if err != nil {
+					log.Printf("Error fetching download URL for book %s: %v", books[i].Title, err)
+					return
+				}
+				urlsCh <- downloadURL
+			}(i)
 		}
-	}
+
+		// Wait for all goroutines to finish
+		wg.Wait()
+
+		// Assign the download URLs to the books
+		for i := range books {
+			books[i].DownloadURL = <-urlsCh
+		}
+	*/
 
 	return books, nil
 }
 
 func (l *LibGenClient) GetDownloadURL(book Book) (string, error) {
-	url := fmt.Sprintf("%s/%s", "https://library.lol/main", book.MD5)
+	url := book.MD5URL()
 	client := http.Client{
-		Timeout: time.Second * 60,
+		Timeout: time.Second * 50,
 		Transport: &http.Transport{
 			Proxy:           http.ProxyFromEnvironment,
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -172,6 +182,11 @@ func (l *LibGenClient) GetDownloadURL(book Book) (string, error) {
 		return "", err
 	}
 	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		log.Printf("Failed to fetch page: %s, status code: %d", url, res.StatusCode)
+		return "", err
+	}
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -185,9 +200,9 @@ func (l *LibGenClient) GetDownloadURL(book Book) (string, error) {
 
 	var downloadURL string
 	doc.Find("#download a").Each(func(_ int, s *goquery.Selection) {
-		link, exists := s.Attr("href")
-		if exists && downloadURL == "" {
-			downloadURL = link
+		downloadLink, exists := s.Attr("href")
+		if exists {
+			downloadURL = downloadLink
 		}
 	})
 
