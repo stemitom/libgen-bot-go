@@ -1,24 +1,23 @@
 package telegram
 
 import (
-	"libgen-bot/internal/services/libgen"
 	"log"
 	"strings"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
+
+	"libgen-bot/internal/services/libgen"
 )
 
 type TelegramBot struct {
-	Bot     *tgbotapi.BotAPI
-	Updates tgbotapi.UpdatesChannel
-	LibGen  *libgen.LibGenClient
+	Bot    *tgbotapi.BotAPI
+	LibGen *libgen.LibGenClient
 }
 
 type Message struct {
 	*tgbotapi.Message
 }
 
-// Handler is a function signature for handling incoming messages.
 type Handler func(msg *Message, tb *TelegramBot)
 
 func NewTelegramBot(token string) (*TelegramBot, error) {
@@ -31,33 +30,24 @@ func NewTelegramBot(token string) (*TelegramBot, error) {
 	return &TelegramBot{Bot: bot, LibGen: l}, nil
 }
 
-// OnMessage sets up a handler for incoming messages
 func (tb *TelegramBot) OnMessage(handler Handler) {
-	updates := tgbotapi.NewUpdate(0)
-	updates.Timeout = 60
-	var err error
-	tb.Updates, err = tb.Bot.GetUpdatesChan(updates)
+	updatesConfig := tgbotapi.NewUpdate(0)
+	updatesConfig.Timeout = 30
+
+	updates, err := tb.Bot.GetUpdatesChan(updatesConfig)
 	if err != nil {
 		log.Println("Error getting updates:", err)
-		return
 	}
 
-	for update := range tb.Updates {
-		// if update.CallbackQuery != nil {
-		// 	tb.handleCallbackQuery(update.CallbackQuery)
-		// } else if update.Message == nil {
-		// 	continue
-		// }
+	for update := range updates {
 		if update.Message == nil {
 			continue
 		}
-
 		message := &Message{Message: update.Message}
 		handler(message, tb)
 	}
 }
 
-// SendMessage sends a message to the specified chatID
 func (tb *TelegramBot) SendMessage(chatID int64, message string, parseMode ...string) {
 	mode := "html"
 	if len(parseMode) > 0 {
@@ -71,7 +61,6 @@ func (tb *TelegramBot) SendMessage(chatID int64, message string, parseMode ...st
 	}
 }
 
-// handleStartCommand handles the "/start" command.
 func (tb *TelegramBot) handleStartCommand(message *Message) {
 	tb.SendMessage(message.Chat.ID, "Welcome to the VivioMagus Bot! Use /help to see available commands.")
 }
@@ -83,7 +72,6 @@ func (tb *TelegramBot) handleHelpCommand(message *Message) {
 		"/help - Show this help message")
 }
 
-// handleSearchCommand handles the "/search" command.
 func (tb *TelegramBot) handleSearchCommand(message *Message) {
 	query := strings.TrimSpace(strings.TrimPrefix(message.Text, "/search"))
 	if query == "" {
@@ -91,22 +79,9 @@ func (tb *TelegramBot) handleSearchCommand(message *Message) {
 		return
 	}
 
-	ids, err := tb.LibGen.Search(query, 5)
+	books, err := tb.LibGen.GetBooks(query)
 	if err != nil {
-		log.Println("Error searching for books:", err)
-		tb.SendMessage(message.Chat.ID, "An error occurred while searching for books.")
-		return
-	}
-
-	books, err := tb.LibGen.GetBooks(ids)
-	if err != nil {
-		log.Println("Error getting book information:", err)
-		tb.SendMessage(message.Chat.ID, "An error occurred while getting book information.")
-		return
-	}
-
-	if len(books) == 0 {
-		tb.SendMessage(message.Chat.ID, "No books found for your query.")
+		tb.SendMessage(message.Chat.ID, "No books found for your query")
 		return
 	}
 
@@ -118,7 +93,6 @@ func (tb *TelegramBot) handleSearchCommand(message *Message) {
 	tb.Bot.Send(msg)
 }
 
-// HandleCommand handles commands received from users.
 func (tb *TelegramBot) HandleCommand(message *Message, command string) {
 	switch command {
 	case "start":
@@ -132,7 +106,6 @@ func (tb *TelegramBot) HandleCommand(message *Message, command string) {
 	}
 }
 
-// HandleIncomingMessage is a general handler for all incoming messages.
 func (tb *TelegramBot) HandleIncomingMessage(message *Message) {
 	if message.IsCommand() {
 		tb.HandleCommand(message, message.Command())
