@@ -4,7 +4,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 
 	"libgen-bot/internal/services/libgen"
 )
@@ -18,8 +18,6 @@ type Message struct {
 	*tgbotapi.Message
 }
 
-type Handler func(msg *Message, tb *TelegramBot)
-
 func NewTelegramBot(token string) (*TelegramBot, error) {
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -28,24 +26,6 @@ func NewTelegramBot(token string) (*TelegramBot, error) {
 
 	l := libgen.NewLibGenClient()
 	return &TelegramBot{Bot: bot, LibGen: l}, nil
-}
-
-func (tb *TelegramBot) OnMessage(handler Handler) {
-	updatesConfig := tgbotapi.NewUpdate(0)
-	updatesConfig.Timeout = 30
-
-	updates, err := tb.Bot.GetUpdatesChan(updatesConfig)
-	if err != nil {
-		log.Println("Error getting updates:", err)
-	}
-
-	for update := range updates {
-		if update.Message == nil {
-			continue
-		}
-		message := &Message{Message: update.Message}
-		handler(message, tb)
-	}
 }
 
 func (tb *TelegramBot) SendMessage(chatID int64, message string, parseMode ...string) {

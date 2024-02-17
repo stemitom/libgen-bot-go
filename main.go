@@ -1,14 +1,14 @@
 package main
 
 import (
+	"libgen-bot/internal/platforms/telegram"
 	"log"
 	"os"
 
-	"libgen-bot/internal/platforms/telegram"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 func main() {
-	// Retrieve env variable for telegram token
 	botToken := os.Getenv("TOKEN")
 	if botToken == "" {
 		log.Fatal("TOKEN environment variable not set")
@@ -18,9 +18,21 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Authorized on account %s", bot.Bot.Self.UserName)
 
-	log.Println("Starting Bot..")
-	bot.OnMessage(func(msg *telegram.Message, tb *telegram.TelegramBot) {
-		tb.HandleIncomingMessage(msg)
-	})
+	updatesConfig := tgbotapi.NewUpdate(0)
+	updatesConfig.Timeout = 60
+	updates, err := bot.Bot.GetUpdatesChan(updatesConfig)
+	if err != nil {
+		log.Println("Error getting updates:", err)
+	}
+
+	for update := range updates {
+		if update.Message != nil {
+			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+
+			message := &telegram.Message{Message: update.Message}
+			bot.HandleIncomingMessage(message)
+		}
+	}
 }
