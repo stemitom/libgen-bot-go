@@ -82,7 +82,7 @@ func buildQueryParams(params map[string]string) string {
 	return strings.Join(queryParams, "&")
 }
 
-func (l *LibGenClient) Search(queryText string, limit int) ([]string, error) {
+func (l *LibGenClient) GetIDs(queryText string, limit int) ([]string, error) {
 	url := fmt.Sprintf("%s?req=%s", LibgenURL, strings.ReplaceAll(queryText, " ", "+"))
 	res, err := l.Client.Get(url)
 	if err != nil {
@@ -134,7 +134,7 @@ func (l *LibGenClient) GetBooksByIDs(ids []string) ([]Book, error) {
 }
 
 func (l *LibGenClient) GetBooks(query string) ([]Book, error) {
-	ids, err := l.Search(query, 5)
+	ids, err := l.GetIDs(query, 5)
 	if err != nil {
 		return nil, err
 	}

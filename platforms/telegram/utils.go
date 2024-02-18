@@ -2,9 +2,10 @@ package telegram
 
 import (
 	"fmt"
-	"libgen-bot/internal/services/libgen"
 	"net/url"
 	"strconv"
+
+	"libgen-bot/services/libgen"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )

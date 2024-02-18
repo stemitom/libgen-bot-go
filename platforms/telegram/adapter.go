@@ -4,9 +4,9 @@ import (
 	"log"
 	"strings"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"libgen-bot/services/libgen"
 
-	"libgen-bot/internal/services/libgen"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 type TelegramBot struct {
@@ -55,14 +55,19 @@ func (tb *TelegramBot) handleHelpCommand(message *Message) {
 func (tb *TelegramBot) handleSearchCommand(message *Message) {
 	query := strings.TrimSpace(strings.TrimPrefix(message.Text, "/search"))
 	if query == "" {
-		tb.SendMessage(message.Chat.ID, "Please provide a search query. Example: /search The Hobbits")
+		tb.SendMessage(message.Chat.ID, "Please provide a search query. Example: <i>/search The Hobbits</i>")
 		return
 	}
 
+	tb.SendMessage(message.Chat.ID, "🤖 Loading...")
 	books, err := tb.LibGen.GetBooks(query)
 	if err != nil {
-		tb.SendMessage(message.Chat.ID, "No books found for your query")
+		tb.SendMessage(message.Chat.ID, "Mmm, something went bad while searching for books. Try again later...")
 		return
+	}
+
+	if len(books) == 0 {
+		tb.SendMessage(message.Chat.ID, "Sorry, I don't have any result for that...")
 	}
 
 	text := makeMessage(books)
@@ -92,4 +97,46 @@ func (tb *TelegramBot) HandleIncomingMessage(message *Message) {
 	} else {
 		tb.SendMessage(message.Chat.ID, "I don't know how to handle this type of message.")
 	}
+}
+
+// CallbackHandler handles callback queries from users.
+// It retrieves book details based on the callback data and sends an edited message
+// with the book details and a URL keyboard for book download link.
+func (tb *TelegramBot) CallbackHandler(query tgbotapi.CallbackQuery) error {
+	chatID := query.Message.Chat.ID
+
+	ids := strings.Split(query.Data, ",")
+	if len(ids) != 1 {
+		return tb.sendEditMessage(chatID, query.Message.MessageID, "💥")
+	}
+
+	idArray := []string{ids[0]}
+	books, err := tb.LibGen.GetBooksByIDs(idArray)
+	if err != nil {
+		return tb.sendEditMessage(chatID, query.Message.MessageID, "💥")
+	}
+
+	book := books[0]
+	urlKeyboard := makeURLKeyboard(book.MD5URL())
+
+	msg := tgbotapi.NewEditMessageText(chatID, query.Message.MessageID, book.Pretty())
+	msg.ParseMode = "html"
+	msg.ReplyMarkup = &urlKeyboard
+	_, err = tb.Bot.Send(msg)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// sendEditMessage sends an edited message to the specified chat with the given text.
+// It returns any error encountered during the sending process.
+func (tb *TelegramBot) sendEditMessage(chatID int64, messageID int, text string) error {
+	msg := tgbotapi.NewEditMessageText(chatID, messageID, text)
+	_, err := tb.Bot.Send(msg)
+	if err != nil {
+		log.Printf("Error sending edit message to %d: %v", chatID, err)
+	}
+	return err
 }

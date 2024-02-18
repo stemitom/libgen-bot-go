@@ -1,9 +1,10 @@
 package main
 
 import (
-	"libgen-bot/internal/platforms/telegram"
 	"log"
 	"os"
+
+	"libgen-bot/platforms/telegram"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
@@ -28,9 +29,10 @@ func main() {
 	}
 
 	for update := range updates {
-		if update.Message != nil {
-			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-
+		if update.CallbackQuery != nil {
+			bot.CallbackHandler(*update.CallbackQuery)
+		} else if update.Message != nil {
+			// log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 			message := &telegram.Message{Message: update.Message}
 			bot.HandleIncomingMessage(message)
 		}
