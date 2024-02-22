@@ -143,5 +143,6 @@ func (l *LibGenClient) GetBooks(query string) ([]Book, error) {
 		return l.GetBooksByIDs(ids)
 	}
 
+	// TODO: should be a variable
 	return nil, fmt.Errorf("no book IDs found")
 }

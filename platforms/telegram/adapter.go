@@ -62,6 +62,8 @@ func (tb *TelegramBot) handleSearchCommand(message *Message) {
 	tb.SendMessage(message.Chat.ID, "🤖 Loading...")
 	books, err := tb.LibGen.GetBooks(query)
 	if err != nil {
+		log.Println(err)
+		// TODO: This error is only raised when there are 0 book(s). This should be explictily mentioned using error variables
 		tb.SendMessage(message.Chat.ID, "Mmm, something went bad while searching for books. Try again later...")
 		return
 	}
