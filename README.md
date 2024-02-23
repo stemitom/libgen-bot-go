@@ -1,6 +1,6 @@
 # Libgen-bot-go
 
-Libgen-bot-go is a telegram bot written in Golang for interacting with [Library Genesis]('https://libgen.is')
+Libgen-bot-go is a [telegram bot](https://t.me/viviomagus_bot) written in Golang for interacting with [Library Genesis]('https://libgen.is')
 
 # Features
 
